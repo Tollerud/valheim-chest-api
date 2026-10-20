@@ -21,6 +21,15 @@ icon = "./icon.png"
 readme = "./README.md"
 outdir = "./build"
 
+# Thunderstore shows CHANGELOG.md from the package root as the Changelog tab.
+[[build.copy]]
+source = "./CHANGELOG.md"
+target = "/"
+
+[[build.copy]]
+source = "./LICENSE"
+target = "/"
+
 [[build.copy]]
 source = "./ChestAPI/bin/Release/ChestAPI.dll"
 target = "plugins/ChestAPI/"
