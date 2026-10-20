@@ -6,8 +6,11 @@ services can answer questions like "do we have enough iron to build X?".
 
 This is API-only: no UI, no in-game commands, just data.
 
-> **Disclaimer:** I'm not experienced with C# development and used Claude Code (an AI coding
-> assistant) to help build this mod. All features are tested before release.
+> **AI-assisted development:** This mod was written with the help of Claude Code, an AI coding
+> assistant. I review the changes and run it on my own Valheim dedicated server, but it has not been
+> tested across many setups or Valheim versions. If something breaks, please report it with your
+> Valheim version and the `ChestAPI` lines from `BepInEx/LogOutput.log`. See the
+> [changelog](CHANGELOG.md) for what has changed.
 
 ## Installation
 
