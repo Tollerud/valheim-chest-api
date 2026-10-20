@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
@@ -11,7 +12,7 @@ namespace ChestAPI
     {
         public const string PluginGuid = "mathias.valheim.chestapi";
         public const string PluginName = "ChestAPI";
-        public const string PluginVersion = "0.1.3";
+        public const string PluginVersion = "0.2.0";
 
         /// <summary>
         /// Preferred way to set the API token: it never touches disk (no config file, no BepInEx log),
@@ -30,6 +31,7 @@ namespace ChestAPI
         private ConfigEntry<string> _apiKey;
         private ConfigEntry<bool> _scanUnloadedContainers;
         private ConfigEntry<float> _scanIntervalSeconds;
+        private ConfigEntry<string> _areas;
 
         private void Awake()
         {
@@ -51,6 +53,28 @@ namespace ChestAPI
             _scanIntervalSeconds = Config.Bind("Scan", "ScanIntervalSeconds", 60f,
                 "How often to run the unloaded-container scan. It runs on the main thread, so very low values " +
                 "on a large world could cost a noticeable chunk of a server tick.");
+
+            _areas = Config.Bind("Areas", "Definitions", "",
+                "Named map regions that API callers can select with ?area=name. Separate entries with ';'. " +
+                "Rectangle: name:rect:minX,minZ,maxX,maxZ   Circle: name:circle:x,z,radius   " +
+                "Example: base:circle:0,0,150;farm:rect:-300,100,-200,200");
+
+            var areas = AreaParser.Parse(_areas.Value, out var areaProblems);
+            foreach (var problem in areaProblems)
+            {
+                Log.LogWarning($"[ChestAPI] Ignoring area definition {problem}");
+            }
+
+            ChestRegistry.Instance.Names = new PlayerNames(Path.Combine(Paths.ConfigPath, "mathias.valheim.chestapi.players.json"));
+            try
+            {
+                ChestRegistry.Instance.Names.Load();
+                Log.LogInfo($"[ChestAPI] Loaded {ChestRegistry.Instance.Names.Count} known player name(s).");
+            }
+            catch (Exception ex)
+            {
+                Log.LogWarning($"[ChestAPI] Could not read the player name file, starting empty: {ex.Message}");
+            }
 
             var token = ResolveApiToken();
             if (string.IsNullOrEmpty(token))
@@ -75,7 +99,7 @@ namespace ChestAPI
                 }
             }
 
-            _server = new HttpApiServer(_bindAddress.Value, _port.Value, token);
+            _server = new HttpApiServer(_bindAddress.Value, _port.Value, token, areas);
             _server.Start();
 
             if (_scanUnloadedContainers.Value)
@@ -100,6 +124,7 @@ namespace ChestAPI
         private void OnDestroy()
         {
             CancelInvoke(nameof(RunUnloadedContainerScan));
+            try { ChestRegistry.Instance.Names.SaveIfDirty(); } catch { /* shutting down */ }
             _server?.Stop();
             _harmony?.UnpatchSelf();
         }

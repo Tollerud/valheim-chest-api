@@ -15,6 +15,9 @@ namespace ChestAPI
     {
         public static readonly ChestRegistry Instance = new ChestRegistry();
 
+        /// <summary>Player id -> name. Replaced by Plugin with a file-backed instance at startup.</summary>
+        public PlayerNames Names = new PlayerNames(null);
+
         private readonly ConcurrentDictionary<string, ChestDto> _chests = new ConcurrentDictionary<string, ChestDto>();
 
         /// <summary>Prefab name hash -> prefab template GameObject, for every prefab in the scene that has a
@@ -57,6 +60,7 @@ namespace ChestAPI
             try
             {
                 if (ZDOMan.instance == null || _containerPrefabs.IsEmpty) return;
+                LearnConnectedPlayers();
 
                 var allZdos = ReflectionHelpers.GetField<System.Collections.IDictionary>(ZDOMan.instance, "m_objectsByID");
                 if (allZdos == null) return;
@@ -85,7 +89,8 @@ namespace ChestAPI
                     }
                 }
 
-                Plugin.Log?.LogInfo($"[ChestAPI] Persisted-world scan: {matched} container ZDO(s) found, {refreshed} unloaded snapshot(s) refreshed.");
+                Names.SaveIfDirty();
+                Plugin.Log?.LogInfo($"[ChestAPI] Persisted-world scan: {matched} container ZDO(s) found, {refreshed} unloaded snapshot(s) refreshed, {Names.Count} player name(s) known.");
             }
             catch (Exception ex)
             {
@@ -129,9 +134,29 @@ namespace ChestAPI
             }
         }
 
-        public List<ChestDto> GetAll() => _chests.Values.ToList();
+        public List<ChestDto> GetAll()
+        {
+            var all = _chests.Values.ToList();
+            foreach (var chest in all) FillOwnerName(chest);
+            return all;
+        }
 
-        public ChestDto GetById(string id) => _chests.TryGetValue(id, out var dto) ? dto : null;
+        public ChestDto GetById(string id)
+        {
+            if (!_chests.TryGetValue(id, out var dto)) return null;
+            FillOwnerName(dto);
+            return dto;
+        }
+
+        // Owner names are resolved when a snapshot is built, but the name may only become known later (the
+        // player logs in, or a crafted item reveals it), so top it up at read time too.
+        private void FillOwnerName(ChestDto chest)
+        {
+            if (chest.Owner != null && string.IsNullOrEmpty(chest.Owner.PlayerName))
+            {
+                chest.Owner.PlayerName = Names.GetName(chest.Owner.PlayerId);
+            }
+        }
 
         private ChestDto BuildDto(Container container)
         {
@@ -277,6 +302,10 @@ namespace ChestAPI
             var shared = item.m_shared;
             var gridPos = item.m_gridPos;
 
+            // The crafter id is the same player id a chest's creator field holds, so every crafted item in any
+            // chest tells us one player's name.
+            Names.Learn(item.m_crafterID, item.m_crafterName);
+
             string displayName = null;
             try
             {
@@ -359,28 +388,25 @@ namespace ChestAPI
 
         private string TryResolvePlayerName(long playerId)
         {
+            LearnConnectedPlayers();
+            return Names.GetName(playerId);
+        }
+
+        /// <summary>Records id -> name for every player currently in the world. (A ZNetPeer's own uid is a
+        /// connection id, not the player id a chest's creator field holds, so the Player objects are used.)</summary>
+        public void LearnConnectedPlayers()
+        {
             try
             {
-                if (ZNet.instance == null) return null;
-                var peers = ReflectionHelpers.GetField<System.Collections.IList>(ZNet.instance, "m_peers");
-                if (peers == null) return null;
-
-                foreach (var peer in peers)
+                foreach (var player in Player.GetAllPlayers())
                 {
-                    var rpc = ReflectionHelpers.GetProperty<object>(peer, "m_rpc") ?? ReflectionHelpers.GetField<object>(peer, "m_rpc");
-                    var playerName = ReflectionHelpers.GetField<string>(peer, "m_playerName");
-                    var pid = ReflectionHelpers.GetField<long>(peer, "m_uid");
-                    if (pid == playerId && !string.IsNullOrEmpty(playerName))
-                    {
-                        return playerName;
-                    }
+                    if (player != null) Names.Learn(player.GetPlayerID(), player.GetPlayerName());
                 }
             }
             catch
             {
                 // best effort only
             }
-            return null;
         }
 
         private string TryGetBiome(Vector3 pos)

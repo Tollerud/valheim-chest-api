@@ -19,6 +19,18 @@ on your server, see `README.md`.
 4. `dotnet build` from `ChestAPI/`.
 5. Copy the built `ChestAPI.dll` into `<server>/BepInEx/plugins/ChestAPI/`.
 
+## Tests
+
+The filtering, aggregation and name-cache code (`ChestQuery.cs`, `PlayerNames.cs`, `Models.cs`) has no Unity
+or BepInEx dependencies, so it is tested without a Valheim install:
+
+```
+dotnet test ChestAPI.Tests
+```
+
+The release workflow runs these before it builds. Anything that touches the game (the Harmony patches,
+`ChestRegistry`) can only be checked against a real server.
+
 ## Known risk areas (please verify against your Valheim version)
 
 I wrote this against commonly-known Valheim/BepInEx modding conventions, but didn't have the game

@@ -44,13 +44,82 @@ This is API-only: no UI, no in-game commands, just data.
 
 ## Endpoints
 
-- `GET /health` — `{ "status": "ok", "utc": ... }`
-- `GET /api/chests` — all known chests
-- `GET /api/chests/{id}` — one chest by ZDOID
-- `GET /api/items/{prefabName}/count` — `{ totalStack, chestCount }` summed across all chests
-
 All responses are JSON. Every request needs header `X-Api-Key: <value>` — **there is no open/unauthenticated
 mode**: with no token configured, the API denies every request (fails closed) rather than defaulting to allow.
+
+| Endpoint | Returns |
+| --- | --- |
+| `GET /health` | `{ "status": "ok", "utc": ... }` |
+| `GET /api/playerchests` | chests **players built**, with contents |
+| `GET /api/playerchests/items` | totals per item across those chests, most plentiful first |
+| `GET /api/playerchests/items/{prefab}/count` | `{ TotalStack, ChestCount }` for one item |
+| `GET /api/playerchests/check?need=Iron:20,Wood:50` | have / needed / missing per item (add `&where=true` for which chests hold it) |
+| `GET /api/players` | players who own chests, with chest counts (for a "whose chests?" picker) |
+| `GET /api/areas` | the named areas configured on the server |
+| `GET /api/chests`, `/api/chests/items`, `/api/chests/items/{prefab}/count`, `/api/chests/check` | the same, over **every** container, including dungeon and world chests |
+| `GET /api/chests/{id}` | one chest by ZDOID |
+| `GET /api/items/{prefab}/count` | older alias of `/api/chests/items/{prefab}/count` |
+
+A **player chest** is one that carries a creator id, meaning a player placed it. Dungeon and world chests
+(`TreasureChest_*` and similar) have none, so they only show up under `/api/chests`. Ships and carts that hold
+items also have a creator; leave them out with `excludePrefab=Karve,VikingShip,Cart`.
+
+### Choosing which chests
+
+These work on every list, totals, count and check endpoint. Combine them freely; all of them must match.
+Names are case-insensitive, lists are comma-separated (or repeat the parameter), and an unknown parameter
+is a `400` rather than being silently ignored.
+
+| Parameter | Meaning |
+| --- | --- |
+| `owner=Mathias,297184578` | chests owned by these players, by name or player id |
+| `minX`, `maxX`, `minZ`, `maxZ` | a rectangle on the map (the "grid"); leave a side out for no limit on it |
+| `x`, `z`, `radius` | a circle: chests within `radius` metres of that point (all three together) |
+| `minY`, `maxY` | height, e.g. `minY=1000` for underground dungeons |
+| `area=base,farm` | named areas from the server config (see below); several are combined |
+| `prefab=piece_chest_wood`, `excludePrefab=...` | only / not these chest types |
+| `biome=Meadows,BlackForest` | only chests in these biomes |
+| `item=Iron,Chain` | only chests holding one of these items (on `/items`, also limits which items are listed) |
+| `loaded=true` | only chests in a loaded zone, i.e. with live contents |
+| `includeItems=false` | omit the item lists from the chest list, for a much smaller response |
+
+Map coordinates are Valheim world coordinates: `x` east-west, `z` north-south, `y` height.
+
+Examples:
+
+```
+# How much iron do the player chests inside a 200 m circle around my base hold?
+GET /api/playerchests/items/Iron/count?x=120&z=-2300&radius=200
+
+# Ola's chests in a rectangle, without the item lists
+GET /api/playerchests?owner=Ola&minX=0&maxX=500&minZ=-2500&maxZ=-2000&includeItems=false
+
+# Can we build this? What is missing, and where is the rest?
+GET /api/playerchests/check?need=Iron:150,Chain:20,Resin:300&area=base&where=true
+```
+
+Every totals, count, check and list response carries a `Meta` block: how many chests matched, how many are
+live (`LiveChests`) versus only known from the periodic scan (`ScannedChests`), and `OldestUpdateUtc`, the
+age of the stalest snapshot. A calculator can use it to say how fresh its numbers are.
+
+### Player names
+
+Valheim only stores a chest's creator as a number, and the server only knows the names of players who are
+online. ChestAPI therefore remembers names: from players currently connected and from the crafter name
+stamped on any item in any chest. They are kept in `BepInEx/config/mathias.valheim.chestapi.players.json` and
+survive restarts. A player nobody has seen or whose crafted items are in no chest has no name yet; use their
+player id until they next log in.
+
+### Named areas
+
+Define regions once on the server and let callers say `?area=base`. In the BepInEx config, `[Areas]`
+`Definitions`, separate entries with `;`:
+
+```
+base:circle:120,-2300,200;farm:rect:-300,100,-200,200
+```
+
+`circle` is `x,z,radius`; `rect` is `minX,minZ,maxX,maxZ`. Bad entries are skipped and logged at startup.
 
 ### Configuring the token
 
