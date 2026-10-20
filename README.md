@@ -6,6 +6,9 @@ services can answer questions like "do we have enough iron to build X?".
 
 This is API-only: no UI, no in-game commands, just data.
 
+> **Disclaimer:** I'm not experienced with C# development and used Claude Code (an AI coding
+> assistant) to help build this mod. All features are tested before release.
+
 ## What it tracks, per chest
 
 - `id` — stable Valheim ZDOID (e.g. `"1234567890:42"`)
