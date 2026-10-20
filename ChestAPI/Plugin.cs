@@ -11,7 +11,7 @@ namespace ChestAPI
     {
         public const string PluginGuid = "mathias.valheim.chestapi";
         public const string PluginName = "ChestAPI";
-        public const string PluginVersion = "0.1.2";
+        public const string PluginVersion = "0.1.3";
 
         /// <summary>
         /// Preferred way to set the API token: it never touches disk (no config file, no BepInEx log),
