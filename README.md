@@ -80,3 +80,7 @@ the data to be fresh in real time.
 
 For how this is implemented, build instructions, and known soft spots in the API detection, see
 [DEVELOPMENT.md](DEVELOPMENT.md).
+
+## License
+
+[MIT](LICENSE).

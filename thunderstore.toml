@@ -27,6 +27,10 @@ source = "./CHANGELOG.md"
 target = "/"
 
 [[build.copy]]
+source = "./LICENSE"
+target = "/"
+
+[[build.copy]]
 source = "./ChestAPI/bin/Release/ChestAPI.dll"
 target = "plugins/ChestAPI/"
 
