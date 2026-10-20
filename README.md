@@ -51,14 +51,22 @@ polling), and `Container.OnDestroy` (zone unloads it, so we mark the last-known 
 instead of dropping it). The HTTP server just reads from an in-memory, thread-safe cache built by
 those patches — no game-thread work happens per request.
 
-**Important limitation:** the dedicated server only instantiates `Container` components for zones
-that are currently loaded (near online players). Chests in far-away, never-visited-this-session
-bases will still show up (with `loaded: false` and whatever was last observed), but if the server
-has *never* loaded that zone since this plugin was installed, it won't know about that chest yet.
-A more complete v2 would read directly from `ZDOMan`'s persisted world state (which exists for the
-whole world regardless of zone loading) by replaying `Container`'s own inventory-save bytes through
-the game's own `Inventory.Load(ZPackage)` — this is a known, solid technique, just deliberately left
-out of this first pass to keep the scope to "get the API working."
+The dedicated server only instantiates `Container` components for zones that are currently loaded
+(near online players), so Harmony hooks alone would miss chests in far-away, nobody's-visited-it-
+this-session bases. To cover those too, `ChestRegistry.ScanPersistedWorld()` runs on a timer
+(`ScanIntervalSeconds` config, default 60s, see below) and sweeps `ZDOMan`'s full persisted world
+state directly — unlike loaded `Container`s, every placed chest's ZDO exists there regardless of
+whether its zone is currently loaded. For each container-type ZDO it decodes the stored item bytes
+by replaying them through the game's own `Inventory.Load(ZPackage)` rather than re-implementing that
+binary format, so it stays correct across versions as long as that method itself exists. Live
+`Container` data always wins over a scan result for the same chest (`loaded: true` entries are never
+overwritten by the scan), so this only fills in/refreshes chests the Harmony hooks can't currently see.
+
+This runs on the Unity main thread deliberately — `ZDOMan`'s backing dictionary isn't safe to read
+from a background thread while the game simultaneously mutates it, so a scan tick does cost a slice
+of a server frame. Set `ScanIntervalSeconds` higher (or `ScanUnloadedContainers = false`) on a large
+world if that becomes noticeable. It can be disabled entirely via config; Harmony-hook tracking of
+loaded containers works independently either way.
 
 ## Known risk areas (please verify against your Valheim version)
 
@@ -75,6 +83,17 @@ crash if the lookup fails:
   *currently connected* peers (via `ZNet.m_peers`), using guessed field names (`m_rpc`, `m_playerName`,
   `m_uid`). Owner *id* (via `Piece.GetCreator()`) should be solid; the name lookup is the soft part.
   If it never resolves anything, inspect `ZNet.m_peers`'s actual element type and fix the field names.
+- **Persisted-world scan owner id** (`ChestRegistry.TryGetOwnerFromZdo`) — reads the creator player id
+  straight off the ZDO via `zdo.GetLong("creator", 0L)`. `"creator"` is a guessed key name (conventional
+  in community modding references for piece ownership); if it never resolves, inspect how `Piece`'s own
+  `GetCreator()` reads its ZDO and match that key.
+- **Persisted-world scan privacy** — always comes back `"Unknown"` for chests only ever seen via the
+  scan (not yet loaded this session). We don't know which ZDO custom-data key the privacy flag is
+  stored under, unlike items/creator; loaded chests still get a real value via `TryGetPrivacy`.
+- **Persisted-world scan inventory size** (`ChestRegistry.BuildDtoFromZdo`) — reads `m_width`/`m_height`
+  off the prefab's template `Container` component via reflection; if those field names are wrong or the
+  template hasn't initialized them, it falls back to a generic 8x4 grid. This only affects reported
+  `width`/`height` and slot-bounds, not which items are decoded.
 
 If the project fails to build with "member not found" on a Harmony `[HarmonyPatch]` target
 (`Container.Awake` / `Container.Save` / `Container.OnDestroy`), check those exact method names exist
@@ -106,6 +125,5 @@ Config (port, bind address, fallback API key) is written to
 
 ## Suggested next steps (not built yet, by request — API first)
 
-- Full-world coverage via direct `ZDOMan` + `Inventory.Load` replay for chests in unloaded zones.
 - Push model (webhook on inventory change) instead of poll-only, for services that want to react live.
 - Filtering query params on `/api/chests` (by biome, by prefab, by "contains item X").

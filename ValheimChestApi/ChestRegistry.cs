@@ -17,10 +17,10 @@ namespace ValheimChestApi
 
         private readonly ConcurrentDictionary<string, ChestDto> _chests = new ConcurrentDictionary<string, ChestDto>();
 
-        /// <summary>Prefab name hash -> prefab name, for every prefab in the scene that has a Container component.
-        /// Not consumed yet (chests are currently tracked directly via Container instances), but kept around
-        /// since a future ZDOMan-based full-world scan needs it to filter ZDOs by prefab.</summary>
-        private readonly ConcurrentDictionary<int, string> _containerPrefabHashes = new ConcurrentDictionary<int, string>();
+        /// <summary>Prefab name hash -> prefab template GameObject, for every prefab in the scene that has a
+        /// Container component. Used by the persisted-world scan to recognize container ZDOs for chests that
+        /// aren't currently loaded, and to read their template inventory size (width/height).</summary>
+        private readonly ConcurrentDictionary<int, GameObject> _containerPrefabs = new ConcurrentDictionary<int, GameObject>();
 
         public void BuildContainerPrefabIndex(ZNetScene scene)
         {
@@ -35,14 +35,61 @@ namespace ValheimChestApi
                     if (prefab.GetComponent<Container>() == null) continue;
 
                     var hash = prefab.name.GetStableHashCode();
-                    _containerPrefabHashes[hash] = prefab.name;
+                    _containerPrefabs[hash] = prefab;
                 }
 
-                Plugin.Log?.LogInfo($"[ValheimChestApi] Indexed {_containerPrefabHashes.Count} container prefab(s).");
+                Plugin.Log?.LogInfo($"[ValheimChestApi] Indexed {_containerPrefabs.Count} container prefab(s).");
             }
             catch (Exception ex)
             {
                 Plugin.Log?.LogWarning($"[ValheimChestApi] Failed to build container prefab index: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Sweeps ZDOMan's full persisted world state (which exists for every chest the server knows about,
+        /// loaded or not) and fills in/refreshes entries for chests that aren't currently in a loaded zone.
+        /// Must be called on the Unity main thread - it's the same thread that mutates ZDOMan, and that
+        /// dictionary isn't safe to enumerate concurrently from a background thread.
+        /// </summary>
+        public void ScanPersistedWorld()
+        {
+            try
+            {
+                if (ZDOMan.instance == null || _containerPrefabs.IsEmpty) return;
+
+                var allZdos = ReflectionHelpers.GetField<System.Collections.IDictionary>(ZDOMan.instance, "m_objectsByID");
+                if (allZdos == null) return;
+
+                // Snapshot the values first - we're on the main thread so there's no real race, this just
+                // avoids "collection was modified" if anything we call re-enters ZDOMan.
+                var zdos = allZdos.Values.OfType<ZDO>().ToList();
+
+                int matched = 0, refreshed = 0;
+                foreach (var zdo in zdos)
+                {
+                    if (!_containerPrefabs.TryGetValue(zdo.GetPrefab(), out var prefab)) continue;
+                    matched++;
+
+                    var id = zdo.m_uid.ToString();
+                    if (_chests.TryGetValue(id, out var existing) && existing.Loaded)
+                    {
+                        continue; // live Container data is fresher than anything we'd decode from the ZDO
+                    }
+
+                    var dto = BuildDtoFromZdo(zdo, prefab);
+                    if (dto != null)
+                    {
+                        _chests[id] = dto;
+                        refreshed++;
+                    }
+                }
+
+                Plugin.Log?.LogInfo($"[ValheimChestApi] Persisted-world scan: {matched} container ZDO(s) found, {refreshed} unloaded snapshot(s) refreshed.");
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log?.LogWarning($"[ValheimChestApi] Persisted-world scan failed: {ex.Message}");
             }
         }
 
@@ -124,6 +171,105 @@ namespace ValheimChestApi
             }
 
             return dto;
+        }
+
+        /// <summary>
+        /// Builds a chest snapshot straight from persisted world state, without an instantiated Container.
+        /// Reuses the game's own Inventory.Load(ZPackage) to decode the stored item bytes instead of
+        /// re-implementing that binary format, so it stays correct across versions as long as the method
+        /// itself exists.
+        /// </summary>
+        private ChestDto BuildDtoFromZdo(ZDO zdo, GameObject prefab)
+        {
+            try
+            {
+                var templateContainer = prefab.GetComponent<Container>();
+                var width = ReflectionHelpers.GetField(templateContainer, "m_width", 0);
+                var height = ReflectionHelpers.GetField(templateContainer, "m_height", 0);
+                if (width <= 0) width = 8;
+                if (height <= 0) height = 4;
+
+                var inventory = new Inventory(prefab.name, null, width, height);
+                var itemBytes = zdo.GetByteArray("items");
+                if (itemBytes != null && itemBytes.Length > 0)
+                {
+                    inventory.Load(new ZPackage(itemBytes));
+                }
+
+                var dto = new ChestDto
+                {
+                    Id = zdo.m_uid.ToString(),
+                    PrefabName = prefab.name,
+                    Loaded = false,
+                    LastUpdatedUtc = DateTime.UtcNow,
+                    Width = inventory.GetWidth(),
+                    Height = inventory.GetHeight(),
+                };
+
+                var pos = zdo.GetPosition();
+                dto.Position = new Vec3Dto { X = pos.x, Y = pos.y, Z = pos.z };
+
+                var rot = zdo.GetRotation().eulerAngles;
+                dto.RotationEuler = new Vec3Dto { X = rot.x, Y = rot.y, Z = rot.z };
+
+                dto.Biome = TryGetBiome(pos);
+                dto.DisplayName = TryGetDisplayNameFromPrefab(prefab);
+                // Privacy is read off the live Container component elsewhere (see TryGetPrivacy) and we
+                // don't know which ZDO custom-data key it's persisted under, so this stays "Unknown" for
+                // chests we've only ever seen via this scan - see README "Known risk areas".
+                dto.Privacy = "Unknown";
+                dto.Owner = TryGetOwnerFromZdo(zdo);
+
+                var items = inventory.GetAllItems();
+                dto.UsedSlots = items.Count;
+                foreach (var item in items)
+                {
+                    dto.Items.Add(BuildItemDto(item));
+                }
+
+                return dto;
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log?.LogWarning($"[ValheimChestApi] Failed to decode persisted container {zdo.m_uid}: {ex.Message}");
+                return null;
+            }
+        }
+
+        private string TryGetDisplayNameFromPrefab(GameObject prefab)
+        {
+            try
+            {
+                var piece = prefab.GetComponent<Piece>();
+                var nameKey = ReflectionHelpers.GetField<string>(piece, "m_name");
+                if (string.IsNullOrEmpty(nameKey)) return null;
+                return Localization.instance != null ? Localization.instance.Localize(nameKey) : nameKey;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private OwnerDto TryGetOwnerFromZdo(ZDO zdo)
+        {
+            try
+            {
+                // "creator" matches the key Piece ownership is conventionally persisted under - best-effort,
+                // see README "Known risk areas". Falls back to no owner rather than a wrong one.
+                var creatorId = zdo.GetLong("creator", 0L);
+                if (creatorId == 0L) return null;
+
+                return new OwnerDto
+                {
+                    PlayerId = creatorId,
+                    PlayerName = TryResolvePlayerName(creatorId),
+                };
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private ItemDto BuildItemDto(ItemDrop.ItemData item)

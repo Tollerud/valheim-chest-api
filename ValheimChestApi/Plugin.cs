@@ -28,6 +28,8 @@ namespace ValheimChestApi
         private ConfigEntry<string> _bindAddress;
         private ConfigEntry<int> _port;
         private ConfigEntry<string> _apiKey;
+        private ConfigEntry<bool> _scanUnloadedContainers;
+        private ConfigEntry<float> _scanIntervalSeconds;
 
         private void Awake()
         {
@@ -41,6 +43,14 @@ namespace ValheimChestApi
                 $"Clients must send this value in an 'X-Api-Key' header. Fallback only - prefer setting the " +
                 $"{ApiTokenEnvVar} environment variable instead, which always takes priority over this value. " +
                 "The API denies every request until a token is set by one of these two methods.");
+
+            _scanUnloadedContainers = Config.Bind("Scan", "ScanUnloadedContainers", true,
+                "Periodically sweep the server's full persisted world state to find chests outside currently " +
+                "loaded zones (e.g. far-away bases with nobody nearby). Without this, those chests only show " +
+                "up once a player gets close enough for the zone to load. Experimental - see README.");
+            _scanIntervalSeconds = Config.Bind("Scan", "ScanIntervalSeconds", 60f,
+                "How often to run the unloaded-container scan. It runs on the main thread, so very low values " +
+                "on a large world could cost a noticeable chunk of a server tick.");
 
             var token = ResolveApiToken();
             if (string.IsNullOrEmpty(token))
@@ -56,7 +66,17 @@ namespace ValheimChestApi
             _server = new HttpApiServer(_bindAddress.Value, _port.Value, token);
             _server.Start();
 
+            if (_scanUnloadedContainers.Value)
+            {
+                InvokeRepeating(nameof(RunUnloadedContainerScan), _scanIntervalSeconds.Value, _scanIntervalSeconds.Value);
+            }
+
             Log.LogInfo($"[ValheimChestApi] Loaded v{PluginVersion}.");
+        }
+
+        private void RunUnloadedContainerScan()
+        {
+            ChestRegistry.Instance.ScanPersistedWorld();
         }
 
         private string ResolveApiToken()
@@ -67,6 +87,7 @@ namespace ValheimChestApi
 
         private void OnDestroy()
         {
+            CancelInvoke(nameof(RunUnloadedContainerScan));
             _server?.Stop();
             _harmony?.UnpatchSelf();
         }
