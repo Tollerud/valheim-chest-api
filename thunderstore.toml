@@ -6,7 +6,7 @@ namespace = "Tollerud"
 name = "ChestAPI"
 # Overridden at publish time by the release workflow (derived from the pushed git tag), but tcli
 # still requires some value here.
-versionNumber = "0.1.3"
+versionNumber = "0.2.0"
 description = "HTTP API exposing the location and contents of every player-placed chest on a Valheim dedicated server, so other tools can check inventory (e.g. \"do we have enough iron?\")."
 websiteUrl = "https://github.com/Tollerud/valheim-chest-api"
 containsNsfwContent = false

@@ -75,13 +75,32 @@ namespace ChestAPI
         public int UsedSlots;
 
         public List<ItemDto> Items = new List<ItemDto>();
+
+        /// <summary>True for chests a player built (they carry a creator id). Dungeon and world chests, e.g.
+        /// "TreasureChest_*", have no creator and are false.</summary>
+        public bool PlayerPlaced => Owner != null && Owner.PlayerId != 0;
+
+        /// <summary>Copy of this chest with the contents omitted, for ?includeItems=false.</summary>
+        public ChestDto WithoutItems()
+        {
+            var copy = (ChestDto)MemberwiseClone();
+            copy.Items = new List<ItemDto>();
+            return copy;
+        }
     }
 
     public class ChestListResponse
     {
         public int Count;
         public DateTime GeneratedAtUtc;
+        public ResultMeta Meta;
         public List<ChestDto> Chests;
+    }
+
+    public class ItemTotalsResponse
+    {
+        public ResultMeta Meta;
+        public List<ItemTotal> Items;
     }
 
     public class ItemCountResponse
@@ -90,6 +109,7 @@ namespace ChestAPI
         public int TotalStack;
         public int ChestCount;
         public DateTime GeneratedAtUtc;
+        public ResultMeta Meta;
     }
 
     public class ErrorResponse
