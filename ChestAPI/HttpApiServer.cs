@@ -17,7 +17,11 @@ namespace ChestAPI
         public HttpApiServer(string bindAddress, int port, string apiKey)
         {
             _apiKey = apiKey;
-            _listener.Prefixes.Add($"http://{bindAddress}:{port}/");
+            // HttpListener (Mono) rejects any request whose Host header doesn't match the prefix host with
+            // "400 Invalid host", so a literal 0.0.0.0 prefix breaks everything behind a reverse proxy.
+            // Binding all interfaces needs the "*" wildcard prefix instead.
+            var host = bindAddress == "0.0.0.0" || bindAddress == "::" ? "*" : bindAddress;
+            _listener.Prefixes.Add($"http://{host}:{port}/");
         }
 
         public void Start()
