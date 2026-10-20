@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>ValheimChestApi</AssemblyName>
+    <RootNamespace>ValheimChestApi</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- We only link against game/BepInEx DLLs, never copy or redistribute them. -->
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!--
+      Point this at your Valheim DEDICATED SERVER install (the folder that contains
+      valheim_server.x86_64 / valheim_server.exe, BepInEx\ and *_Data\).
+      Easiest: set an env var once, e.g. on Linux:
+        export VALHEIM_INSTALL=/home/mathias/valheim-server
+      Or pass it on the command line:
+        dotnet build -p:VALHEIM_INSTALL=/path/to/server
+    -->
+    <VALHEIM_INSTALL Condition="'$(VALHEIM_INSTALL)' == ''">$(MSBuildThisFileDirectory)..\..\valheim-server</VALHEIM_INSTALL>
+    <BepInExCoreDir>$(VALHEIM_INSTALL)\BepInEx\core</BepInExCoreDir>
+    <GameManagedDir>$(VALHEIM_INSTALL)\valheim_server_Data\Managed</GameManagedDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>$(BepInExCoreDir)\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(BepInExCoreDir)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <!--
+      NOTE: we deliberately reference the RAW game assembly, not a "publicized" copy.
+      Anything private/internal on game types is accessed via reflection in
+      ReflectionHelpers.cs instead, so this builds against a stock install.
+    -->
+    <Reference Include="assembly_valheim">
+      <HintPath>$(GameManagedDir)\assembly_valheim.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="assembly_utils">
+      <HintPath>$(GameManagedDir)\assembly_utils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(GameManagedDir)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(GameManagedDir)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>$(GameManagedDir)\Newtonsoft.Json.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>
