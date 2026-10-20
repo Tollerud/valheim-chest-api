@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading;
 using Newtonsoft.Json;
 
-namespace ValheimChestApi
+namespace ChestAPI
 {
     internal class HttpApiServer
     {
@@ -24,9 +24,9 @@ namespace ValheimChestApi
         {
             _listener.Start();
             _running = true;
-            _thread = new Thread(Loop) { IsBackground = true, Name = "ValheimChestApi-Http" };
+            _thread = new Thread(Loop) { IsBackground = true, Name = "ChestAPI-Http" };
             _thread.Start();
-            Plugin.Log?.LogInfo($"[ValheimChestApi] HTTP API listening on {string.Join(", ", _listener.Prefixes)}");
+            Plugin.Log?.LogInfo($"[ChestAPI] HTTP API listening on {string.Join(", ", _listener.Prefixes)}");
         }
 
         public void Stop()
@@ -49,7 +49,7 @@ namespace ValheimChestApi
                 {
                     if (_running)
                     {
-                        Plugin.Log?.LogWarning($"[ValheimChestApi] HTTP listener error: {ex.Message}");
+                        Plugin.Log?.LogWarning($"[ChestAPI] HTTP listener error: {ex.Message}");
                     }
                 }
             }
@@ -125,7 +125,7 @@ namespace ValheimChestApi
             }
             catch (Exception ex)
             {
-                Plugin.Log?.LogWarning($"[ValheimChestApi] Request handling error: {ex.Message}");
+                Plugin.Log?.LogWarning($"[ChestAPI] Request handling error: {ex.Message}");
                 try
                 {
                     WriteJson(context, 500, new ErrorResponse { Error = "Internal error." });

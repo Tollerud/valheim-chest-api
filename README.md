@@ -1,4 +1,4 @@
-# ValheimChestApi
+# ChestAPI
 
 A BepInEx plugin for the **Valheim dedicated server** that tracks every player-placed chest
 (any piece with a `Container` component) and exposes it over a local JSON HTTP API, so other
@@ -115,8 +115,8 @@ on your installed version the same way.
    ```
 3. That install must already have BepInEx 5.4.x installed on it (gives us `BepInEx.dll` and
    `0Harmony.dll` under `BepInEx/core/`).
-4. `dotnet build` from `ValheimChestApi/`.
-5. Copy the built `ValheimChestApi.dll` into `<server>/BepInEx/plugins/ValheimChestApi/`.
+4. `dotnet build` from `ChestAPI/`.
+5. Copy the built `ChestAPI.dll` into `<server>/BepInEx/plugins/ChestAPI/`.
 6. Set `VALHEIM_CHEST_API_TOKEN` in the environment the server process runs in (see above), then start it.
 7. On the machine running it:
    ```
@@ -148,7 +148,7 @@ One-time setup before the first release:
    (`[package.dependencies]`) and `BEPINEX_VERSION` in the workflow file still matches a real,
    current version on Thunderstore (versions do get superseded).
 
-To release: bump `PluginVersion` in `ValheimChestApi/Plugin.cs` to match, commit, then:
+To release: bump `PluginVersion` in `ChestAPI/Plugin.cs` to match, commit, then:
 
 ```
 git tag v0.2.0

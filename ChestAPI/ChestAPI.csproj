@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
-    <AssemblyName>ValheimChestApi</AssemblyName>
-    <RootNamespace>ValheimChestApi</RootNamespace>
+    <AssemblyName>ChestAPI</AssemblyName>
+    <RootNamespace>ChestAPI</RootNamespace>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

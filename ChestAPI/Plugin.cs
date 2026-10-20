@@ -4,13 +4,13 @@ using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
 
-namespace ValheimChestApi
+namespace ChestAPI
 {
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
     public class Plugin : BaseUnityPlugin
     {
         public const string PluginGuid = "mathias.valheim.chestapi";
-        public const string PluginName = "ValheimChestApi";
+        public const string PluginName = "ChestAPI";
         public const string PluginVersion = "0.1.0";
 
         /// <summary>
@@ -55,7 +55,7 @@ namespace ValheimChestApi
             var token = ResolveApiToken();
             if (string.IsNullOrEmpty(token))
             {
-                Log.LogWarning($"[ValheimChestApi] No API token configured - set the {ApiTokenEnvVar} environment " +
+                Log.LogWarning($"[ChestAPI] No API token configured - set the {ApiTokenEnvVar} environment " +
                                 "variable (recommended) or the ApiKey config entry. Until then, the HTTP API will " +
                                 "deny every request (fail closed).");
             }
@@ -71,7 +71,7 @@ namespace ValheimChestApi
                 InvokeRepeating(nameof(RunUnloadedContainerScan), _scanIntervalSeconds.Value, _scanIntervalSeconds.Value);
             }
 
-            Log.LogInfo($"[ValheimChestApi] Loaded v{PluginVersion}.");
+            Log.LogInfo($"[ChestAPI] Loaded v{PluginVersion}.");
         }
 
         private void RunUnloadedContainerScan()

@@ -3,7 +3,7 @@ schemaVersion = "0.0.1"
 
 [package]
 namespace = "Tollerud"
-name = "ValheimChestApi"
+name = "ChestAPI"
 # Overridden at publish time by the release workflow (derived from the pushed git tag), but tcli
 # still requires some value here.
 versionNumber = "0.1.0"
@@ -22,8 +22,8 @@ readme = "./README.md"
 outdir = "./build"
 
 [[build.copy]]
-source = "./ValheimChestApi/bin/Release/ValheimChestApi.dll"
-target = "plugins/ValheimChestApi/"
+source = "./ChestAPI/bin/Release/ChestAPI.dll"
+target = "plugins/ChestAPI/"
 
 [publish]
 repository = "https://thunderstore.io"

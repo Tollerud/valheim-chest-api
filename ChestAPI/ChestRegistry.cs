@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-namespace ValheimChestApi
+namespace ChestAPI
 {
     /// <summary>
     /// Thread-safe in-memory snapshot of every chest/container we've observed. Populated by Harmony
@@ -38,11 +38,11 @@ namespace ValheimChestApi
                     _containerPrefabs[hash] = prefab;
                 }
 
-                Plugin.Log?.LogInfo($"[ValheimChestApi] Indexed {_containerPrefabs.Count} container prefab(s).");
+                Plugin.Log?.LogInfo($"[ChestAPI] Indexed {_containerPrefabs.Count} container prefab(s).");
             }
             catch (Exception ex)
             {
-                Plugin.Log?.LogWarning($"[ValheimChestApi] Failed to build container prefab index: {ex.Message}");
+                Plugin.Log?.LogWarning($"[ChestAPI] Failed to build container prefab index: {ex.Message}");
             }
         }
 
@@ -85,11 +85,11 @@ namespace ValheimChestApi
                     }
                 }
 
-                Plugin.Log?.LogInfo($"[ValheimChestApi] Persisted-world scan: {matched} container ZDO(s) found, {refreshed} unloaded snapshot(s) refreshed.");
+                Plugin.Log?.LogInfo($"[ChestAPI] Persisted-world scan: {matched} container ZDO(s) found, {refreshed} unloaded snapshot(s) refreshed.");
             }
             catch (Exception ex)
             {
-                Plugin.Log?.LogWarning($"[ValheimChestApi] Persisted-world scan failed: {ex.Message}");
+                Plugin.Log?.LogWarning($"[ChestAPI] Persisted-world scan failed: {ex.Message}");
             }
         }
 
@@ -105,7 +105,7 @@ namespace ValheimChestApi
             }
             catch (Exception ex)
             {
-                Plugin.Log?.LogWarning($"[ValheimChestApi] Failed to snapshot container: {ex.Message}");
+                Plugin.Log?.LogWarning($"[ChestAPI] Failed to snapshot container: {ex.Message}");
             }
         }
 
@@ -125,7 +125,7 @@ namespace ValheimChestApi
             }
             catch (Exception ex)
             {
-                Plugin.Log?.LogWarning($"[ValheimChestApi] Failed to mark container unloaded: {ex.Message}");
+                Plugin.Log?.LogWarning($"[ChestAPI] Failed to mark container unloaded: {ex.Message}");
             }
         }
 
@@ -231,7 +231,7 @@ namespace ValheimChestApi
             }
             catch (Exception ex)
             {
-                Plugin.Log?.LogWarning($"[ValheimChestApi] Failed to decode persisted container {zdo.m_uid}: {ex.Message}");
+                Plugin.Log?.LogWarning($"[ChestAPI] Failed to decode persisted container {zdo.m_uid}: {ex.Message}");
                 return null;
             }
         }

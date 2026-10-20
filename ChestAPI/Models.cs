@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace ValheimChestApi
+namespace ChestAPI
 {
     public class Vec3Dto
     {

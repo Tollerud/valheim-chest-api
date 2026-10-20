@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Reflection;
 
-namespace ValheimChestApi
+namespace ChestAPI
 {
     /// <summary>
     /// Small helpers for pulling data off private/internal members of game types without needing

@@ -63,7 +63,7 @@ jobs:
           cp "$RUNNER_TEMP"/bepinex/BepInExPack_Valheim/BepInEx/core/*.dll valheim-server/BepInEx/core/
 
       - name: Build plugin
-        run: dotnet build ValheimChestApi/ValheimChestApi.csproj -c Release -p:VALHEIM_INSTALL="$(pwd)/valheim-server"
+        run: dotnet build ChestAPI/ChestAPI.csproj -c Release -p:VALHEIM_INSTALL="$(pwd)/valheim-server"
 
       - name: Install Thunderstore CLI
         run: dotnet tool install --global tcli --version "$TCLI_VERSION"

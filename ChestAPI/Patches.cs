@@ -1,6 +1,6 @@
 using HarmonyLib;
 
-namespace ValheimChestApi
+namespace ChestAPI
 {
     [HarmonyPatch(typeof(ZNetScene), "Awake")]
     internal static class ZNetScene_Awake_Patch
