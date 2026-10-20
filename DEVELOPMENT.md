@@ -53,7 +53,7 @@ degrade to `"Unknown"`/`null` at runtime instead, by design), but might still be
   `width`/`height` and slot-bounds, not which items are decoded.
 
 If the project fails to build with "member not found" on a Harmony `[HarmonyPatch]` target
-(`Container.Awake` / `Container.Save` / `Container.OnDestroy`), check those exact method names exist
+(`ZNetScene.Awake` / `Container.Awake` / `Container.Save`; there is deliberately no `Container.OnDestroy` patch, since Valheim's `Container` declares none - unloads are tracked by `ContainerUnloadTracker`), check those exact method names exist
 on your installed version the same way.
 
 ## Publishing to Thunderstore
