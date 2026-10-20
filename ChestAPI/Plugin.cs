@@ -11,7 +11,7 @@ namespace ChestAPI
     {
         public const string PluginGuid = "mathias.valheim.chestapi";
         public const string PluginName = "ChestAPI";
-        public const string PluginVersion = "0.1.1";
+        public const string PluginVersion = "0.1.2";
 
         /// <summary>
         /// Preferred way to set the API token: it never touches disk (no config file, no BepInEx log),
@@ -61,7 +61,19 @@ namespace ChestAPI
             }
 
             _harmony = new Harmony(PluginGuid);
-            _harmony.PatchAll();
+            // Patch each class on its own so one target that moved in a Valheim update disables only that
+            // hook instead of aborting Awake (which would also keep the HTTP server from ever starting).
+            foreach (var type in AccessTools.GetTypesFromAssembly(typeof(Plugin).Assembly))
+            {
+                try
+                {
+                    _harmony.CreateClassProcessor(type).Patch();
+                }
+                catch (Exception ex)
+                {
+                    Log.LogError($"[ChestAPI] Patch {type.Name} failed, continuing without it: {ex.Message}");
+                }
+            }
 
             _server = new HttpApiServer(_bindAddress.Value, _port.Value, token);
             _server.Start();

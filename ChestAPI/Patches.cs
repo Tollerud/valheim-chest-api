@@ -1,4 +1,5 @@
 using HarmonyLib;
+using UnityEngine;
 
 namespace ChestAPI
 {
@@ -18,6 +19,14 @@ namespace ChestAPI
         private static void Postfix(Container __instance)
         {
             ChestRegistry.Instance.OnContainerLoaded(__instance);
+
+            // Container declares no OnDestroy of its own (only OnDestroyed, which fires just when a chest is
+            // broken in-game), so there is nothing to patch for "zone unloaded". Attach a tiny tracker instead
+            // and let Unity's own OnDestroy tell us.
+            if (__instance.GetComponent<ContainerUnloadTracker>() == null)
+            {
+                __instance.gameObject.AddComponent<ContainerUnloadTracker>();
+            }
         }
     }
 
@@ -32,12 +41,15 @@ namespace ChestAPI
         }
     }
 
-    [HarmonyPatch(typeof(Container), "OnDestroy")]
-    internal static class Container_OnDestroy_Patch
+    internal sealed class ContainerUnloadTracker : MonoBehaviour
     {
-        private static void Prefix(Container __instance)
+        private void OnDestroy()
         {
-            ChestRegistry.Instance.OnContainerUnloaded(__instance);
+            var container = GetComponent<Container>();
+            if (container != null)
+            {
+                ChestRegistry.Instance.OnContainerUnloaded(container);
+            }
         }
     }
 }
