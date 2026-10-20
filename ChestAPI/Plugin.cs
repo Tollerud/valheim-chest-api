@@ -11,14 +11,14 @@ namespace ChestAPI
     {
         public const string PluginGuid = "mathias.valheim.chestapi";
         public const string PluginName = "ChestAPI";
-        public const string PluginVersion = "0.1.0";
+        public const string PluginVersion = "0.1.1";
 
         /// <summary>
         /// Preferred way to set the API token: it never touches disk (no config file, no BepInEx log),
         /// so it's the right choice for a token shared with other services. Always wins over the
         /// ApiKey config entry when both are set.
         /// </summary>
-        public const string ApiTokenEnvVar = "VALHEIM_CHEST_API_TOKEN";
+        public const string ApiTokenEnvVar = "CHESTAPI_API_TOKEN";
 
         internal static ManualLogSource Log;
 

@@ -243,7 +243,7 @@ namespace ChestAPI
                 var piece = prefab.GetComponent<Piece>();
                 var nameKey = ReflectionHelpers.GetField<string>(piece, "m_name");
                 if (string.IsNullOrEmpty(nameKey)) return null;
-                return Localization.instance != null ? Localization.instance.Localize(nameKey) : nameKey;
+                return ReflectionHelpers.TryLocalize(nameKey);
             }
             catch
             {
@@ -280,7 +280,7 @@ namespace ChestAPI
             string displayName = null;
             try
             {
-                displayName = Localization.instance != null ? Localization.instance.Localize(shared.m_name) : shared.m_name;
+                displayName = ReflectionHelpers.TryLocalize(shared.m_name);
             }
             catch
             {
@@ -312,7 +312,7 @@ namespace ChestAPI
                 var piece = container.GetComponent<Piece>();
                 var nameKey = ReflectionHelpers.GetField<string>(piece, "m_name");
                 if (string.IsNullOrEmpty(nameKey)) return null;
-                return Localization.instance != null ? Localization.instance.Localize(nameKey) : nameKey;
+                return ReflectionHelpers.TryLocalize(nameKey);
             }
             catch
             {
