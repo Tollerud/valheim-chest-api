@@ -126,6 +126,46 @@ on your installed version the same way.
 Config (port, bind address, fallback API key) is written to
 `BepInEx/config/mathias.valheim.chestapi.cfg` on first run — edit and restart to change.
 
+## Publishing to Thunderstore
+
+Tagging a release (`vX.Y.Z`) builds the plugin and publishes it to
+[thunderstore.io](https://thunderstore.io) automatically via `.github/workflows/thunderstore-publish.yml`
+and `thunderstore.toml`. Nothing publishes on ordinary commits or PRs — pushing a version tag is the
+deliberate "ship it" step, same as it would be for a manual upload.
+
+One-time setup before the first release:
+
+1. **Create the Thunderstore team** (if you haven't) matching the `namespace` in `thunderstore.toml`
+   (currently `Tollerud`) at thunderstore.io's team settings.
+2. **Generate an API token**: on thunderstore.io, go to your team → Settings → Service Accounts (or
+   your own account settings, depending on how Thunderstore has it organized at the time), create a
+   token scoped to this team/package.
+3. **Add it as a GitHub secret**: repo Settings → Secrets and variables → Actions → New repository
+   secret, name `TCLI_AUTH_TOKEN`, value the token from step 2.
+4. **Add `icon.png`** at the repo root — a 256x256 PNG, required by Thunderstore. Not included here;
+   drop your own in before the first real release.
+5. Double check the `denikson-BepInExPack_Valheim` version pinned in both `thunderstore.toml`
+   (`[package.dependencies]`) and `BEPINEX_VERSION` in the workflow file still matches a real,
+   current version on Thunderstore (versions do get superseded).
+
+To release: bump `PluginVersion` in `ValheimChestApi/Plugin.cs` to match, commit, then:
+
+```
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+The workflow downloads the Valheim dedicated server and the pinned BepInExPack anonymously via
+SteamCMD/Thunderstore (build-time assembly references only, nothing redistributed), builds the
+plugin, and runs `tcli publish`.
+
+**This pipeline is unverified** — written from current Thunderstore CLI docs and a working reference
+workflow, but never actually run (no GitHub Actions access from here, and this project's build can't
+be compile-checked in this sandbox either — see "Known risk areas" above). Treat the first tag push
+as a test: watch the Actions run, and if `tcli publish` rejects something (category slugs and the
+BepInEx dependency version are the most likely culprits — see comments in `thunderstore.toml`), fix
+and re-tag.
+
 ## Suggested next steps (not built yet, by request — API first)
 
 - Push model (webhook on inventory change) instead of poll-only, for services that want to react live.

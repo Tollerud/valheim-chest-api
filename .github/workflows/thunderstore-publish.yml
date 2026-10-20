@@ -1,0 +1,80 @@
+name: Build and publish to Thunderstore
+
+# Push a tag like "v0.2.0" to trigger a real publish. Nothing publishes on plain commits/PRs to
+# main - tagging is the deliberate "ship it" action for a mod that goes live on a public listing.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  # Must match the version pinned in thunderstore.toml's [package.dependencies] entry for
+  # denikson-BepInExPack_Valheim. Bump both together when you want a newer BepInEx.
+  BEPINEX_VERSION: "5.4.2351"
+  TCLI_VERSION: "0.2.4"
+
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install SteamCMD
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lib32gcc-s1
+          mkdir -p "$RUNNER_TEMP/steamcmd"
+          curl --fail --location --retry 3 \
+            https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz \
+            -o "$RUNNER_TEMP/steamcmd.tar.gz"
+          tar -xzf "$RUNNER_TEMP/steamcmd.tar.gz" -C "$RUNNER_TEMP/steamcmd"
+
+      - name: Download Valheim dedicated server (build-time assembly references only)
+        run: |
+          mkdir -p valheim-server
+          for attempt in 1 2 3; do
+            if "$RUNNER_TEMP/steamcmd/steamcmd.sh" \
+                +force_install_dir "$(pwd)/valheim-server" \
+                +login anonymous +app_update 896660 validate +quit \
+                && test -f valheim-server/valheim_server_Data/Managed/assembly_valheim.dll; then
+              break
+            fi
+            if [ "$attempt" = 3 ]; then
+              echo "::error::SteamCMD could not download Valheim app 896660 after three attempts."
+              exit 1
+            fi
+            echo "SteamCMD attempt $attempt failed, retrying..."
+            sleep 5
+          done
+
+      - name: Download BepInExPack (build-time BepInEx.dll/0Harmony.dll references only)
+        run: |
+          curl --fail --location --retry 3 \
+            "https://thunderstore.io/package/download/denikson/BepInExPack_Valheim/${BEPINEX_VERSION}/" \
+            -o "$RUNNER_TEMP/bepinex.zip"
+          mkdir -p "$RUNNER_TEMP/bepinex"
+          unzip -q "$RUNNER_TEMP/bepinex.zip" -d "$RUNNER_TEMP/bepinex"
+          mkdir -p valheim-server/BepInEx/core
+          cp "$RUNNER_TEMP"/bepinex/BepInExPack_Valheim/BepInEx/core/*.dll valheim-server/BepInEx/core/
+
+      - name: Build plugin
+        run: dotnet build ValheimChestApi/ValheimChestApi.csproj -c Release -p:VALHEIM_INSTALL="$(pwd)/valheim-server"
+
+      - name: Install Thunderstore CLI
+        run: dotnet tool install --global tcli --version "$TCLI_VERSION"
+
+      - name: Publish to Thunderstore
+        env:
+          TCLI_AUTH_TOKEN: ${{ secrets.TCLI_AUTH_TOKEN }}
+        run: |
+          if [ -z "$TCLI_AUTH_TOKEN" ]; then
+            echo "::error::Set the TCLI_AUTH_TOKEN repository secret (a Thunderstore API token) before tagging a release. See README.md."
+            exit 1
+          fi
+          package_version="${GITHUB_REF_NAME#v}"
+          tcli publish --package-version "$package_version"

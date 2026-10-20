@@ -1,0 +1,35 @@
+[config]
+schemaVersion = "0.0.1"
+
+[package]
+namespace = "Tollerud"
+name = "ValheimChestApi"
+# Overridden at publish time by the release workflow (derived from the pushed git tag), but tcli
+# still requires some value here.
+versionNumber = "0.1.0"
+description = "HTTP API exposing the location and contents of every player-placed chest on a Valheim dedicated server, so other tools can check inventory (e.g. \"do we have enough iron?\")."
+websiteUrl = "https://github.com/Tollerud/valheim-chest-api"
+containsNsfwContent = false
+
+[package.dependencies]
+# Keep this in sync with BEPINEX_VERSION in .github/workflows/thunderstore-publish.yml - the
+# workflow downloads this exact BepInExPack version to build against.
+denikson-BepInExPack_Valheim = "5.4.2351"
+
+[build]
+icon = "./icon.png"
+readme = "./README.md"
+outdir = "./build"
+
+[[build.copy]]
+source = "./ValheimChestApi/bin/Release/ValheimChestApi.dll"
+target = "plugins/ValheimChestApi/"
+
+[publish]
+repository = "https://thunderstore.io"
+communities = ["valheim"]
+
+[publish.categories]
+# Slugs guessed from the Valheim community's category names (Tools, Server-side) - if `tcli
+# publish` rejects these, check the exact slugs via the category filters on thunderstore.io/c/valheim/
+valheim = ["tools", "server-side"]
